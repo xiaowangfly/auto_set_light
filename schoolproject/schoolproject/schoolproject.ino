@@ -1,3 +1,4 @@
+//开源隐藏指导教师姓名
 #include<analogWrite.h>//NANO中不需要，但ESP32要额外安库
 #include<ssd1306.h>//oled库
 //变阻器向左转动输出值变大，根据现实向右灯亮
@@ -9,6 +10,7 @@ int slideR = 32;//设置滑动变阻器（电位器）引脚，支持32号口
 int lightR = 33;//设置光敏电阻引脚，支持33口
 int show_teacher_time = 0;
 int button2In = 17;
+int leave_time = 0;//添加离开检测，防止超声波误判
 bool is_showed = false;
 const PROGMEM char HaveStart_Text[]{
 0x80,0x82,0x82,0x82,0xFE,0x82,0x82,0x82,0x82,0x82,0xFE,0x82,0x82,0x82,0x80,0x00,
@@ -54,7 +56,7 @@ void displayCN(int x,int y,int buffer[],int num){
 }
 
 const PROGMEM char Leading_Teacher1[]={
-  0x10,0x10,0x10,0xFF,0x10,0x90,0x00,0x3F,0x48,0x48,0x44,0x44,0x44,0x42,0x70,0x00,
+0x10,0x10,0x10,0xFF,0x10,0x90,0x00,0x3F,0x48,0x48,0x44,0x44,0x44,0x42,0x70,0x00,
 0x04,0x44,0x82,0x7F,0x01,0x00,0x00,0xFF,0x49,0x49,0x49,0x49,0x49,0xFF,0x00,0x00,/*"指",0*/
 
 0x00,0x00,0x7E,0x92,0x92,0x92,0x92,0x92,0x92,0x92,0x92,0x9E,0x80,0xE0,0x00,0x00,
@@ -169,7 +171,7 @@ void Mode1(){//模式1——旋钮控制
 void Mode2(){
   analogWrite(lightIn,map(lightRead(),0,4096,20,255));//通过光敏电阻控制小灯亮度
 }
-float get_distance(){//超声波测距
+float get_distance(){//超声波测距，返回浮点数据，测量元件到被测元件距离（单位：厘米）
   digitalWrite(12,LOW);
   delayMicroseconds(2);
   digitalWrite(12,HIGH);
@@ -224,7 +226,7 @@ void Timer(int second){//固定模板，使oled显示中文
 void loop() {
   // put your main code here, to run repeatedly:
   //测试串口输出部分
-  Serial.println(digitalRead(button2In));
+  Serial.println(get_distance());
   //
   if(digitalRead(button2In) == 1){
     show_teacher_time = millis();
@@ -239,7 +241,13 @@ void loop() {
     }
     delay(200);//延时200毫秒防止切换频繁
   }
-  if(get_distance() <= 55){
+  if(get_distance() > 55){
+    leave_time++;//添加离开检测次数
+  }
+  else{
+    leave_time = 0;//回来时归零
+  }
+  if(leave_time <= 3){
     if(states == 0){
       Mode1();  //旋钮控制
     }
@@ -253,4 +261,3 @@ void loop() {
     Timer(millis() / 1000);
   
 }
-
